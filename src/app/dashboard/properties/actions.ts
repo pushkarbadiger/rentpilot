@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { propertySchema, flattenZodErrors } from "@/lib/validation";
+import { pathWithDemoNoticeIfNeeded } from "@/lib/demo-write";
 import {
   createProperty,
   deleteProperty,
@@ -46,7 +47,7 @@ export async function createPropertyAction(
 
   revalidatePath("/dashboard/properties");
   revalidatePath("/dashboard");
-  redirect(`/dashboard/properties/${data.id}`);
+  redirect(await pathWithDemoNoticeIfNeeded(`/dashboard/properties/${data.id}`));
 }
 
 export async function updatePropertyAction(
@@ -67,7 +68,7 @@ export async function updatePropertyAction(
   revalidatePath("/dashboard/properties");
   revalidatePath(`/dashboard/properties/${id}`);
   revalidatePath("/dashboard");
-  redirect(`/dashboard/properties/${id}`);
+  redirect(await pathWithDemoNoticeIfNeeded(`/dashboard/properties/${id}`));
 }
 
 export async function deletePropertyAction(id: string) {
@@ -75,5 +76,5 @@ export async function deletePropertyAction(id: string) {
   if (error) throw new Error(error);
   revalidatePath("/dashboard/properties");
   revalidatePath("/dashboard");
-  redirect("/dashboard/properties");
+  redirect(await pathWithDemoNoticeIfNeeded("/dashboard/properties"));
 }

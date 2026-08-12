@@ -6,17 +6,32 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
 import { loginAction, type AuthFormState } from "@/app/auth/actions";
+import { getSafeRedirectPath } from "@/lib/utils";
 
-export function LoginForm() {
+export function LoginForm({
+  redirectTo,
+  authError,
+}: {
+  redirectTo?: string;
+  authError?: string;
+}) {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
     loginAction,
     {}
   );
   const errors = state.fieldErrors ?? {};
+  const safeRedirect = getSafeRedirectPath(redirectTo);
 
   return (
     <form action={formAction} className="space-y-5">
+      {authError === "auth_callback_failed" && (
+        <Alert variant="error">
+          Sign-in could not be completed. Please try again.
+        </Alert>
+      )}
       {state.error && <Alert variant="error">{state.error}</Alert>}
+
+      <input type="hidden" name="redirectTo" value={safeRedirect} />
 
       <FormField label="Email" htmlFor="email" required error={errors.email}>
         <Input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" />

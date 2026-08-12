@@ -14,6 +14,42 @@ export function formatCurrency(amount: number) {
   return currencyFormatter.format(amount || 0);
 }
 
+const currencyPreciseFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Currency with cents — useful for payment amounts. */
+export function formatCurrencyPrecise(amount: number) {
+  return currencyPreciseFormatter.format(amount || 0);
+}
+
+export function formatEmpty(
+  value: string | null | undefined,
+  fallback = "—"
+): string {
+  if (value == null || !String(value).trim()) return fallback;
+  return value;
+}
+
+export function formatStatusLabel(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+export function titleCase(value: string) {
+  return value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function formatPaymentMethod(method: string | null | undefined): string {
+  if (!method) return "—";
+  return titleCase(method);
+}
+
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
@@ -44,9 +80,31 @@ export function initials(name: string) {
     .join("");
 }
 
-export function titleCase(value: string) {
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+/**
+ * Returns a safe internal redirect path, defaulting to /dashboard.
+ * Rejects external URLs and auth pages to prevent open redirects.
+ */
+export function getSafeRedirectPath(
+  redirectTo: string | null | undefined
+): string {
+  const fallback = "/dashboard";
+  if (!redirectTo) return fallback;
+
+  const trimmed = redirectTo.trim();
+  const lower = trimmed.toLowerCase();
+  if (!trimmed.startsWith("/")) return fallback;
+  if (trimmed.startsWith("//")) return fallback;
+  if (trimmed.includes("://")) return fallback;
+  if (
+    lower.startsWith("javascript:") ||
+    lower.startsWith("data:") ||
+    lower.startsWith("vbscript:")
+  ) {
+    return fallback;
+  }
+  if (trimmed.startsWith("/login") || trimmed.startsWith("/signup")) {
+    return fallback;
+  }
+
+  return trimmed;
 }

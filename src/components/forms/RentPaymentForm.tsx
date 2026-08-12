@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
@@ -26,6 +27,39 @@ export function RentPaymentForm({
   const [state, formAction, pending] = useActionState(action, {});
   const errors = state.fieldErrors ?? {};
 
+  const tenantById = useMemo(
+    () => new Map(tenants.map((t) => [t.id, t])),
+    [tenants]
+  );
+
+  const [tenantId, setTenantId] = useState(payment?.tenant_id ?? "");
+  const [propertyId, setPropertyId] = useState(payment?.property_id ?? "");
+  const [amount, setAmount] = useState(
+    payment?.amount != null ? String(payment.amount) : ""
+  );
+
+  const selectedTenant = tenantId ? tenantById.get(tenantId) : undefined;
+  const propertyLocked = Boolean(selectedTenant?.property_id);
+
+  const availableProperties = selectedTenant?.property_id
+    ? properties.filter((p) => p.id === selectedTenant.property_id)
+    : properties;
+
+  function handleTenantChange(nextTenantId: string) {
+    setTenantId(nextTenantId);
+    const tenant = nextTenantId ? tenantById.get(nextTenantId) : undefined;
+
+    if (tenant?.property_id) {
+      setPropertyId(tenant.property_id);
+    } else if (!payment || nextTenantId !== payment.tenant_id) {
+      setPropertyId("");
+    }
+
+    if (tenant && tenant.monthly_rent > 0) {
+      setAmount(String(tenant.monthly_rent));
+    }
+  }
+
   return (
     <form action={formAction} className="space-y-6">
       {state.error && <Alert variant="error">{state.error}</Alert>}
@@ -40,12 +74,14 @@ export function RentPaymentForm({
           <Select
             id="tenant_id"
             name="tenant_id"
-            defaultValue={payment?.tenant_id ?? ""}
+            value={tenantId}
+            onChange={(e) => handleTenantChange(e.target.value)}
           >
             <option value="">Select a tenant</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.full_name}
+                {t.property?.name ? ` · ${t.property.name}` : ""}
               </option>
             ))}
           </Select>
@@ -56,14 +92,23 @@ export function RentPaymentForm({
           htmlFor="property_id"
           required
           error={errors.property_id}
+          hint={
+            propertyLocked
+              ? "Assigned from the selected tenant"
+              : selectedTenant
+                ? "Select a property for this payment"
+                : undefined
+          }
         >
           <Select
             id="property_id"
             name="property_id"
-            defaultValue={payment?.property_id ?? ""}
+            value={propertyId}
+            disabled={propertyLocked}
+            onChange={(e) => setPropertyId(e.target.value)}
           >
             <option value="">Select a property</option>
-            {properties.map((p) => (
+            {availableProperties.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
@@ -78,12 +123,17 @@ export function RentPaymentForm({
             type="number"
             min={0}
             step="0.01"
-            defaultValue={payment?.amount ?? ""}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
           />
         </FormField>
 
         <FormField label="Status" htmlFor="status" required>
-          <Select id="status" name="status" defaultValue={payment?.status ?? "pending"}>
+          <Select
+            id="status"
+            name="status"
+            defaultValue={payment?.status ?? "pending"}
+          >
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
             <option value="late">Late</option>

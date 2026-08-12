@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { loginSchema, signUpSchema } from "@/lib/validation";
+import { getSafeRedirectPath } from "@/lib/utils";
 
 export interface AuthFormState {
   error?: string;
@@ -41,7 +42,7 @@ export async function signUpAction(
   const supabase = await createClient();
   if (!supabase) return { error: "Supabase client unavailable." };
 
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -50,6 +51,18 @@ export async function signUpAction(
   });
 
   if (error) return { error: error.message };
+
+  // Belt-and-suspenders: ensure a profile row exists when the session is
+  // active (trigger may be missing on older Supabase projects).
+  if (signUpData.user) {
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      { id: signUpData.user.id, full_name: parsed.data.fullName },
+      { onConflict: "id" }
+    );
+    if (profileError) {
+      console.error("[signup] profile upsert failed", profileError.message);
+    }
+  }
 
   redirect("/dashboard");
 }
@@ -86,7 +99,10 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: error.message };
 
-  redirect("/dashboard");
+  const redirectTo = getSafeRedirectPath(
+    String(formData.get("redirectTo") || "")
+  );
+  redirect(redirectTo);
 }
 
 export async function signOutAction() {

@@ -1,13 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/Badge";
+import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { isPaymentOpen } from "@/lib/services/metrics";
 import { CalendarClock } from "lucide-react";
 import type { RentPayment } from "@/lib/types/domain";
 
 export function UpcomingRent({ payments }: { payments: RentPayment[] }) {
   const upcoming = [...payments]
-    .filter((p) => p.status === "pending" || p.status === "late")
+    .filter((p) => isPaymentOpen(p))
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
     .slice(0, 5);
 
@@ -44,7 +45,7 @@ export function UpcomingRent({ payments }: { payments: RentPayment[] }) {
                   <span className="text-sm font-semibold text-slate-900">
                     {formatCurrency(payment.amount)}
                   </span>
-                  <StatusBadge status={payment.status} kind="payment" />
+                  <PaymentStatusBadge payment={payment} />
                 </div>
               </li>
             ))}

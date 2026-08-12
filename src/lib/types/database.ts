@@ -1,6 +1,6 @@
 // Hand-authored type definitions matching supabase/migrations/0001_init.sql.
-// If you use the Supabase CLI, you can replace this with a generated file via:
-//   npx supabase gen types typescript --project-id <id> > src/lib/types/database.ts
+// Regenerate when the schema changes — see README "Generating Supabase types":
+//   npx supabase gen types typescript --project-id <ref> > src/lib/types/database.ts
 
 import type {
   PaymentMethod,

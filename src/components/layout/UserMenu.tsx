@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, User } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { initials } from "@/lib/utils";
 import { signOutAction } from "@/app/auth/actions";
 
@@ -61,6 +62,15 @@ export function UserMenu({
               </p>
             )}
           </div>
+          <Link
+            href="/dashboard/settings"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => setOpen(false)}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
           <form action={signOutAction}>
             <button
               type="submit"

@@ -76,6 +76,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Enter your password"),
 });
 
+export const profileSchema = z.object({
+  full_name: z.string().trim().min(2, "Enter your full name"),
+  company_name: z.string().trim().max(100).optional().or(z.literal("")),
+});
+
+export type ProfileFormValues = z.infer<typeof profileSchema>;
+
 /** Formats the first Zod error for each field into a flat string map. */
 export function flattenZodErrors(error: z.ZodError) {
   const errors: Record<string, string> = {};

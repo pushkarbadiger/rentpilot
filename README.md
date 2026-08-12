@@ -62,6 +62,11 @@ make changes stick.
    and paste the contents of `supabase/migrations/0001_init.sql`, then
    run it. (Or, if you use the Supabase CLI: `supabase db push`.)
 
+   **Existing projects:** if profile save fails after connecting Supabase,
+   also run `supabase/migrations/0002_profiles_company_name.sql` in the
+   SQL editor. Older databases may be missing the `profiles.company_name`
+   column even when the app expects it.
+
    This creates `profiles`, `properties`, `tenants`, and `rent_payments`,
    with UUID primary keys, foreign keys, indexes, `created_at` /
    `updated_at` timestamps, and **Row Level Security** policies scoping
@@ -141,6 +146,23 @@ npm run build    # production build
 npm run start    # run the production build
 npm run lint     # eslint
 ```
+
+### Generating Supabase types
+
+`src/lib/types/database.ts` is hand-authored to match `supabase/migrations/0001_init.sql`.
+When your Supabase project is connected, you can regenerate it with the Supabase CLI
+(no service-role key required — uses your logged-in CLI session or project ref):
+
+```bash
+# Option A: linked local project (after `supabase link`)
+npx supabase gen types typescript --linked > src/lib/types/database.ts
+
+# Option B: remote project by ID (from Supabase dashboard → Project Settings → General)
+npx supabase gen types typescript --project-id YOUR_PROJECT_REF > src/lib/types/database.ts
+```
+
+After regenerating, run `npm run build` to verify types still align with the service layer.
+Do not commit `.env.local` or any service-role keys.
 
 ## Security
 

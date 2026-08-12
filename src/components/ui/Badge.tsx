@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, formatStatusLabel } from "@/lib/utils";
 
 type Tone = "neutral" | "green" | "amber" | "red" | "blue" | "slate";
 
@@ -67,7 +67,7 @@ export function StatusBadge({
 
   return (
     <Badge tone={map[status] ?? "neutral"}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {formatStatusLabel(status)}
     </Badge>
   );
 }

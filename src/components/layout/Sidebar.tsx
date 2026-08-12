@@ -6,6 +6,7 @@ import {
   Building2,
   LayoutDashboard,
   Receipt,
+  Settings,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/properties", label: "Properties", icon: Building2 },
   { href: "/dashboard/tenants", label: "Tenants", icon: Users },
   { href: "/dashboard/rent", label: "Rent Tracking", icon: Receipt },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export function SidebarNav() {

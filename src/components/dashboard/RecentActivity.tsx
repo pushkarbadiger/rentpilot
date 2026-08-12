@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/Badge";
+import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Receipt } from "lucide-react";
@@ -50,7 +50,7 @@ export function RecentActivity({ payments }: { payments: RentPayment[] }) {
                   <span className="text-sm font-semibold text-slate-900">
                     {formatCurrency(payment.amount)}
                   </span>
-                  <StatusBadge status={payment.status} kind="payment" />
+                  <PaymentStatusBadge payment={payment} />
                 </div>
               </li>
             ))}

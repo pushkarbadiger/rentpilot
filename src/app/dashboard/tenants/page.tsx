@@ -6,11 +6,29 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/Badge";
 import { ErrorState } from "@/components/ui/Alert";
+import { ListToolbar } from "@/components/ui/ListToolbar";
+import { Pagination } from "@/components/ui/Pagination";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { listTenants } from "@/lib/services/tenants";
+import { parseListQuery } from "@/lib/list-query";
+import { listProperties } from "@/lib/services/properties";
+import { listTenantsPage } from "@/lib/services/tenants";
 
-export default async function TenantsPage() {
-  const { data: tenants, error } = await listTenants();
+export default async function TenantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const query = parseListQuery(params);
+  const [{ data: result, error }, { data: properties }] = await Promise.all([
+    listTenantsPage(query),
+    listProperties(),
+  ]);
+
+  const tenants = result?.items ?? [];
+  const hasFilters = Boolean(query.q || query.status || query.propertyId);
+  const propertyOptions =
+    properties?.map((p) => ({ value: p.id, label: p.name })) ?? [];
 
   return (
     <div>
@@ -25,15 +43,37 @@ export default async function TenantsPage() {
         }
       />
 
+      <ListToolbar
+        query={query}
+        searchPlaceholder="Search name, email, phone…"
+        statusOptions={[
+          { value: "active", label: "Active" },
+          { value: "pending", label: "Pending" },
+          { value: "former", label: "Former" },
+        ]}
+        propertyOptions={propertyOptions}
+        sortOptions={[
+          { value: "created_at", label: "Date added" },
+          { value: "full_name", label: "Name" },
+          { value: "monthly_rent", label: "Monthly rent" },
+          { value: "lease_end", label: "Lease end" },
+          { value: "status", label: "Status" },
+        ]}
+      />
+
       {error ? (
         <ErrorState message={error} />
-      ) : !tenants || tenants.length === 0 ? (
+      ) : tenants.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No tenants yet"
-          description="Add your first tenant to start tracking leases and rent."
-          actionLabel="Add Tenant"
-          actionHref="/dashboard/tenants/new"
+          title={hasFilters ? "No matching tenants" : "No tenants yet"}
+          description={
+            hasFilters
+              ? "Try adjusting your search or filters."
+              : "Add your first tenant to start tracking leases and rent."
+          }
+          actionLabel={hasFilters ? undefined : "Add Tenant"}
+          actionHref={hasFilters ? undefined : "/dashboard/tenants/new"}
         />
       ) : (
         <Card className="overflow-hidden">
@@ -86,6 +126,15 @@ export default async function TenantsPage() {
               </tbody>
             </table>
           </div>
+          {result && (
+            <Pagination
+              basePath="/dashboard/tenants"
+              query={query}
+              page={result.page}
+              totalPages={result.totalPages}
+              total={result.total}
+            />
+          )}
         </Card>
       )}
     </div>

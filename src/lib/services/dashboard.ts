@@ -1,4 +1,9 @@
 import type { DashboardStats } from "@/lib/types/domain";
+import {
+  calculatePortfolioMetrics,
+  calculateRentMonthMetrics,
+  type RentMonthMetrics,
+} from "./metrics";
 import { listProperties } from "./properties";
 import { listTenants } from "./tenants";
 import { listRentPayments } from "./rent-payments";
@@ -23,46 +28,47 @@ export async function getDashboardStats(): Promise<
     return { data: null, error: paymentsResult.error };
   }
 
-  const properties = propertiesResult.data ?? [];
-  const tenants = tenantsResult.data ?? [];
-  const payments = paymentsResult.data ?? [];
-
-  const totalUnits = properties.reduce((sum, p) => sum + (p.units || 0), 0);
-  const occupiedUnits = tenants.filter((t) => t.status === "active").length;
-
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const paymentsThisMonth = payments.filter((p) => {
-    const due = new Date(p.due_date);
-    return due.getMonth() === currentMonth && due.getFullYear() === currentYear;
-  });
-
-  const monthlyRent = tenants
-    .filter((t) => t.status === "active")
-    .reduce((sum, t) => sum + (t.monthly_rent || 0), 0);
-
-  const rentCollected = paymentsThisMonth
-    .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-  const outstandingRent = paymentsThisMonth
-    .filter((p) => p.status === "pending" || p.status === "late" || p.status === "partial")
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-  const latePayments = payments.filter((p) => p.status === "late").length;
+  const metrics = calculatePortfolioMetrics(
+    propertiesResult.data ?? [],
+    tenantsResult.data ?? [],
+    paymentsResult.data ?? []
+  );
 
   const stats: DashboardStats = {
-    totalProperties: properties.length,
-    totalUnits,
-    occupiedUnits,
-    vacantUnits: Math.max(totalUnits - occupiedUnits, 0),
-    monthlyRent,
-    rentCollected,
-    outstandingRent,
-    latePayments,
+    totalProperties: metrics.totalProperties,
+    totalUnits: metrics.totalUnits,
+    occupiedUnits: metrics.occupiedUnits,
+    vacantUnits: metrics.vacantUnits,
+    monthlyRent: metrics.monthlyRent,
+    rentCollected: metrics.rentCollected,
+    outstandingRent: metrics.outstandingRent,
+    latePayments: metrics.latePayments,
   };
 
   return { data: stats, error: null };
+}
+
+/** Shared rent-month metrics for the rent tracking page. */
+export async function getRentMonthMetrics(): Promise<
+  ServiceResult<RentMonthMetrics>
+> {
+  const [tenantsResult, paymentsResult] = await Promise.all([
+    listTenants(),
+    listRentPayments(),
+  ]);
+
+  if (tenantsResult.error) {
+    return { data: null, error: tenantsResult.error };
+  }
+  if (paymentsResult.error) {
+    return { data: null, error: paymentsResult.error };
+  }
+
+  return {
+    data: calculateRentMonthMetrics(
+      paymentsResult.data ?? [],
+      tenantsResult.data ?? []
+    ),
+    error: null,
+  };
 }

@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { DemoBanner } from "@/components/layout/DemoBanner";
+import { DemoWriteNotice } from "@/components/layout/DemoWriteNotice";
 import { getCurrentUser } from "@/lib/services/auth";
+import { Suspense } from "react";
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +23,14 @@ export default async function DashboardLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <Header user={user} />
         {user.isDemo && <DemoBanner />}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {user.isDemo && (
+            <Suspense fallback={null}>
+              <DemoWriteNotice />
+            </Suspense>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

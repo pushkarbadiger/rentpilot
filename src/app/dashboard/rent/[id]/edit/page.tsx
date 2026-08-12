@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/Card";
 import { RentPaymentForm } from "@/components/forms/RentPaymentForm";
+import { DeleteRentPaymentButton } from "@/components/forms/DeleteRentPaymentButton";
 import { getRentPayment } from "@/lib/services/rent-payments";
 import { listTenants } from "@/lib/services/tenants";
 import { listProperties } from "@/lib/services/properties";
@@ -22,7 +23,16 @@ export default async function EditRentPaymentPage({
 
   return (
     <div>
-      <PageHeader title="Edit payment" description="Update this rent payment record." />
+      <PageHeader
+        title="Edit payment"
+        description="Update this rent payment record."
+        actions={
+          <DeleteRentPaymentButton
+            id={payment.id}
+            tenantName={payment.tenant?.full_name ?? "Unknown tenant"}
+          />
+        }
+      />
       <Card className="max-w-3xl">
         <CardContent>
           <RentPaymentForm

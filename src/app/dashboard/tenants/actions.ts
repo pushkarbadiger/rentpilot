@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { tenantSchema, flattenZodErrors } from "@/lib/validation";
+import { pathWithDemoNoticeIfNeeded } from "@/lib/demo-write";
 import { createTenant, deleteTenant, updateTenant } from "@/lib/services/tenants";
 
 export interface TenantFormState {
@@ -39,7 +40,7 @@ export async function createTenantAction(
 
   revalidatePath("/dashboard/tenants");
   revalidatePath("/dashboard");
-  redirect(`/dashboard/tenants/${data.id}`);
+  redirect(await pathWithDemoNoticeIfNeeded(`/dashboard/tenants/${data.id}`));
 }
 
 export async function updateTenantAction(
@@ -56,7 +57,7 @@ export async function updateTenantAction(
   revalidatePath("/dashboard/tenants");
   revalidatePath(`/dashboard/tenants/${id}`);
   revalidatePath("/dashboard");
-  redirect(`/dashboard/tenants/${id}`);
+  redirect(await pathWithDemoNoticeIfNeeded(`/dashboard/tenants/${id}`));
 }
 
 export async function deleteTenantAction(id: string) {
@@ -64,5 +65,5 @@ export async function deleteTenantAction(id: string) {
   if (error) throw new Error(error);
   revalidatePath("/dashboard/tenants");
   revalidatePath("/dashboard");
-  redirect("/dashboard/tenants");
+  redirect(await pathWithDemoNoticeIfNeeded("/dashboard/tenants"));
 }

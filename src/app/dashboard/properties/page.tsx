@@ -6,11 +6,23 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/Badge";
 import { ErrorState } from "@/components/ui/Alert";
+import { ListToolbar } from "@/components/ui/ListToolbar";
+import { Pagination } from "@/components/ui/Pagination";
 import { formatCurrency, titleCase } from "@/lib/utils";
-import { listProperties } from "@/lib/services/properties";
+import { parseListQuery } from "@/lib/list-query";
+import { listPropertiesPage } from "@/lib/services/properties";
 
-export default async function PropertiesPage() {
-  const { data: properties, error } = await listProperties();
+export default async function PropertiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const query = parseListQuery(params);
+  const { data: result, error } = await listPropertiesPage(query);
+
+  const properties = result?.items ?? [];
+  const hasFilters = Boolean(query.q || query.status);
 
   return (
     <div>
@@ -25,15 +37,35 @@ export default async function PropertiesPage() {
         }
       />
 
+      <ListToolbar
+        query={query}
+        searchPlaceholder="Search name, address, city…"
+        statusOptions={[
+          { value: "active", label: "Active" },
+          { value: "inactive", label: "Inactive" },
+        ]}
+        sortOptions={[
+          { value: "created_at", label: "Date added" },
+          { value: "name", label: "Name" },
+          { value: "monthly_rent", label: "Monthly rent" },
+          { value: "units", label: "Units" },
+          { value: "status", label: "Status" },
+        ]}
+      />
+
       {error ? (
         <ErrorState message={error} />
-      ) : !properties || properties.length === 0 ? (
+      ) : properties.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No properties yet"
-          description="Add your first property to start tracking units, rent, and tenants."
-          actionLabel="Add Property"
-          actionHref="/dashboard/properties/new"
+          title={hasFilters ? "No matching properties" : "No properties yet"}
+          description={
+            hasFilters
+              ? "Try adjusting your search or filters."
+              : "Add your first property to start tracking units, rent, and tenants."
+          }
+          actionLabel={hasFilters ? undefined : "Add Property"}
+          actionHref={hasFilters ? undefined : "/dashboard/properties/new"}
         />
       ) : (
         <Card className="overflow-hidden">
@@ -83,6 +115,15 @@ export default async function PropertiesPage() {
               </tbody>
             </table>
           </div>
+          {result && (
+            <Pagination
+              basePath="/dashboard/properties"
+              query={query}
+              page={result.page}
+              totalPages={result.totalPages}
+              total={result.total}
+            />
+          )}
         </Card>
       )}
     </div>

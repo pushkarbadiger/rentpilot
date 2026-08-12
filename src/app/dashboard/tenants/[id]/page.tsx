@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
+import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DeleteTenantButton } from "@/components/forms/DeleteTenantButton";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -134,7 +135,7 @@ export default async function TenantDetailsPage({
                 {tenantPayments.map((payment) => (
                   <li key={payment.id}>
                     <Link
-                      href="/dashboard/rent"
+                      href={`/dashboard/rent/${payment.id}`}
                       className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50"
                     >
                       <div>
@@ -145,7 +146,7 @@ export default async function TenantDetailsPage({
                           Due {formatDate(payment.due_date)}
                         </p>
                       </div>
-                      <StatusBadge status={payment.status} kind="payment" />
+                      <PaymentStatusBadge payment={payment} />
                     </Link>
                   </li>
                 ))}

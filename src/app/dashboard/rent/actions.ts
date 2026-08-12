@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { rentPaymentSchema, flattenZodErrors } from "@/lib/validation";
+import { pathWithDemoNoticeIfNeeded } from "@/lib/demo-write";
 import {
   createRentPayment,
   deleteRentPayment,
@@ -40,7 +41,7 @@ export async function createRentPaymentAction(
 
   revalidatePath("/dashboard/rent");
   revalidatePath("/dashboard");
-  redirect("/dashboard/rent");
+  redirect(await pathWithDemoNoticeIfNeeded("/dashboard/rent"));
 }
 
 export async function updateRentPaymentAction(
@@ -56,7 +57,7 @@ export async function updateRentPaymentAction(
 
   revalidatePath("/dashboard/rent");
   revalidatePath("/dashboard");
-  redirect("/dashboard/rent");
+  redirect(await pathWithDemoNoticeIfNeeded("/dashboard/rent"));
 }
 
 export async function deleteRentPaymentAction(id: string) {
@@ -64,5 +65,5 @@ export async function deleteRentPaymentAction(id: string) {
   if (error) throw new Error(error);
   revalidatePath("/dashboard/rent");
   revalidatePath("/dashboard");
-  redirect("/dashboard/rent");
+  redirect(await pathWithDemoNoticeIfNeeded("/dashboard/rent"));
 }

@@ -8,6 +8,7 @@ export interface RentReminderTemplateInput {
   reminderKind: ReminderKind;
   landlordName: string;
   landlordCompany: string | null;
+  paymentUrl: string | null;
 }
 
 function kindLabel(kind: ReminderKind): string {
@@ -28,11 +29,13 @@ function kindIntro(kind: ReminderKind): string {
     case "due":
       return "This is a reminder that your rent payment is due today.";
     case "late":
-      return "Our records show that your rent payment is past due. Please contact us to arrange payment as soon as possible.";
+      return "Our records show that your rent payment is past due. Please arrange payment as soon as possible.";
   }
 }
 
-export function buildRentReminderSubject(input: RentReminderTemplateInput): string {
+export function buildRentReminderSubject(
+  input: RentReminderTemplateInput
+): string {
   const property = input.propertyName ? ` — ${input.propertyName}` : "";
   return `${kindLabel(input.reminderKind)}${property}`;
 }
@@ -51,7 +54,11 @@ export function buildRentReminderText(input: RentReminderTemplateInput): string 
     `Due date: ${input.dueDate}`,
     input.propertyName ? `Property: ${input.propertyName}` : "",
     "",
-    "Please contact your landlord to arrange payment. This message does not confirm that an online payment was received.",
+    input.paymentUrl
+      ? `Pay your rent online: ${input.paymentUrl}`
+      : "Please contact your landlord to arrange payment.",
+    "",
+    "This message does not confirm that an online payment was received.",
     "",
     `— ${from}`,
   ]
@@ -64,22 +71,75 @@ export function buildRentReminderHtml(input: RentReminderTemplateInput): string 
     ? `${escapeHtml(input.landlordName)} (${escapeHtml(input.landlordCompany)})`
     : escapeHtml(input.landlordName);
 
+  const paymentSection = input.paymentUrl
+    ? `
+    <div style="margin: 24px 0;">
+      <a
+        href="${escapeHtml(input.paymentUrl)}"
+        style="display:inline-block;padding:12px 20px;background:#4f46e5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;"
+      >
+        Pay Rent
+      </a>
+      <p style="font-size:13px;color:#64748b;margin-top:10px;">
+        Or copy and paste this link into your browser:
+      </p>
+      <p style="font-size:13px;word-break:break-all;">
+        ${escapeHtml(input.paymentUrl)}
+      </p>
+    </div>
+    `
+    : `
+    <p>Please contact your landlord to arrange payment.</p>
+    `;
+
   return `<!DOCTYPE html>
 <html>
-  <body style="font-family: system-ui, sans-serif; color: #0f172a; line-height: 1.5;">
+  <body style="font-family:system-ui,sans-serif;color:#0f172a;line-height:1.5;">
     <p>Hi ${escapeHtml(input.tenantName)},</p>
+
     <p>${escapeHtml(kindIntro(input.reminderKind))}</p>
-    <table style="margin: 16px 0; border-collapse: collapse;">
-      <tr><td style="padding: 4px 12px 4px 0; color: #64748b;">Amount outstanding</td><td><strong>${escapeHtml(input.outstandingAmount)}</strong></td></tr>
-      <tr><td style="padding: 4px 12px 4px 0; color: #64748b;">Due date</td><td>${escapeHtml(input.dueDate)}</td></tr>
-      ${input.propertyName ? `<tr><td style="padding: 4px 12px 4px 0; color: #64748b;">Property</td><td>${escapeHtml(input.propertyName)}</td></tr>` : ""}
+
+    <table style="margin:16px 0;border-collapse:collapse;">
+      <tr>
+        <td style="padding:4px 12px 4px 0;color:#64748b;">
+          Amount outstanding
+        </td>
+        <td>
+          <strong>${escapeHtml(input.outstandingAmount)}</strong>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:4px 12px 4px 0;color:#64748b;">
+          Due date
+        </td>
+        <td>${escapeHtml(input.dueDate)}</td>
+      </tr>
+
+      ${
+        input.propertyName
+          ? `<tr>
+              <td style="padding:4px 12px 4px 0;color:#64748b;">
+                Property
+              </td>
+              <td>${escapeHtml(input.propertyName)}</td>
+            </tr>`
+          : ""
+      }
     </table>
-    <p>Please contact your landlord to arrange payment. This message does not confirm that an online payment was received.</p>
-    <p style="color: #64748b;">— ${from}</p>
+
+    ${paymentSection}
+
+    <p style="color:#64748b;font-size:13px;">
+      This message does not confirm that an online payment was received.
+    </p>
+
+    <p style="color:#64748b;">
+      — ${from}
+    </p>
   </body>
 </html>`;
 }
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

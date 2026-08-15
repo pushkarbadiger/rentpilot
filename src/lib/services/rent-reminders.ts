@@ -5,6 +5,7 @@ import {
   buildRentReminderText,
 } from "@/lib/email-templates/rent-reminder";
 import { getEmailProvider, isEmailConfigured } from "@/lib/services/email";
+import { createRentCollectionSession } from "@/lib/services/payments/create-collection-session";
 import type {
   ReminderKind,
   RentPayment,
@@ -612,6 +613,16 @@ export async function sendRentReminder(
 
   const landlord = await getLandlordContext(user.id, user.isDemo);
   const outstanding = getPaymentOutstandingAmount(payment, tenant.monthly_rent, referenceDate);
+    const collectionResult = await createRentCollectionSession(paymentId);
+
+if (collectionResult.error) {
+  console.error(
+    "[rent-reminders] payment link creation failed:",
+    collectionResult.error
+  );
+}
+
+const paymentUrl = collectionResult.data?.collectionUrl?.trim() || null;
   const templateInput = {
     tenantName: tenant.full_name,
     propertyName: payment.property?.name ?? null,
@@ -620,8 +631,8 @@ export async function sendRentReminder(
     reminderKind,
     landlordName: landlord.fullName,
     landlordCompany: landlord.companyName,
+    paymentUrl,
   };
-
   const subject = buildRentReminderSubject(templateInput);
   const text = buildRentReminderText(templateInput);
   const html = buildRentReminderHtml(templateInput);

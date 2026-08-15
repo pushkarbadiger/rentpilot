@@ -696,7 +696,7 @@ export async function sendRentReminder(
       status: "failed",
       errorMessage: message,
     });
-    return { data: null, error: "Could not send reminder. Please try again." };
+    return { data: null, error: `Email failed: ${message}` };
   }
 }
 

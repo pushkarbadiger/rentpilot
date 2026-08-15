@@ -313,4 +313,43 @@ export const demoRentPayments: RentPayment[] = [
     created_at: daysFromNow(-33),
     updated_at: daysFromNow(-33),
   },
+].map((payment) => ({
+  ...payment,
+  billing_month: payment.due_date.slice(0, 7),
+})) as RentPayment[];
+
+/** Simulated checkout sessions for demo UI only — never written to Supabase. */
+export const demoStripeCheckoutSessions = [
+  {
+    id: "demo-checkout-1",
+    owner_id: DEMO_OWNER_ID,
+    rent_payment_id: "pay-5",
+    tenant_id: "ten-1",
+    stripe_checkout_session_id: "cs_demo_open",
+    stripe_payment_intent_id: null,
+    amount_cents: 145000,
+    currency: "usd" as const,
+    status: "open" as const,
+    idempotency_key: "demo:pay-5:open",
+    checkout_url: null,
+    created_at: daysFromNow(-1) + "T12:00:00Z",
+    completed_at: null,
+    reconciled_at: null,
+  },
+  {
+    id: "demo-checkout-2",
+    owner_id: DEMO_OWNER_ID,
+    rent_payment_id: "pay-3",
+    tenant_id: "ten-4",
+    stripe_checkout_session_id: "cs_demo_reconciled",
+    stripe_payment_intent_id: "pi_demo",
+    amount_cents: 210000,
+    currency: "usd" as const,
+    status: "complete" as const,
+    idempotency_key: "demo:pay-3:complete",
+    checkout_url: null,
+    created_at: daysFromNow(-5) + "T12:00:00Z",
+    completed_at: daysFromNow(-4) + "T12:00:00Z",
+    reconciled_at: daysFromNow(-4) + "T12:05:00Z",
+  },
 ];

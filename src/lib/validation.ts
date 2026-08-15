@@ -83,6 +83,17 @@ export const profileSchema = z.object({
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
+export const recurringRentMonthSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Select a valid billing month");
+
+export type RecurringRentMonth = z.infer<typeof recurringRentMonthSchema>;
+
+export const reminderKindSchema = z.enum(["upcoming", "due", "late"]);
+
+export type ReminderKindValue = z.infer<typeof reminderKindSchema>;
+
 /** Formats the first Zod error for each field into a flat string map. */
 export function flattenZodErrors(error: z.ZodError) {
   const errors: Record<string, string> = {};

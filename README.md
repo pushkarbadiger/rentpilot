@@ -67,6 +67,19 @@ make changes stick.
    SQL editor. Older databases may be missing the `profiles.company_name`
    column even when the app expects it.
 
+   For recurring rent generation, also run
+   `supabase/migrations/0003_rent_payments_billing_month.sql`.
+
+   For manual email rent reminders, also run
+   `supabase/migrations/0004_rent_reminder_logs.sql` and
+   `supabase/migrations/0005_rent_reminder_logs_reserved_at.sql`.
+
+   For Stripe payment collection schema preparation (P2.8A — does not
+   enable payments yet), also run, in order:
+   `supabase/migrations/0006_profiles_stripe_connect.sql`,
+   `supabase/migrations/0007_stripe_checkout_sessions.sql`, and
+   `supabase/migrations/0008_stripe_webhook_events.sql`.
+
    This creates `profiles`, `properties`, `tenants`, and `rent_payments`,
    with UUID primary keys, foreign keys, indexes, `created_at` /
    `updated_at` timestamps, and **Row Level Security** policies scoping
@@ -138,6 +151,153 @@ or real Supabase data, so UI code never needs to know which mode it's in.
   introducing an `organizations` table and switching ownership from a
   single user to an org is an additive schema change, not a rewrite.
 
+## Email rent reminders (P2.7)
+
+Manual email reminders are available on the rent dashboard (batch) and each
+rent payment detail page (single). Configure `RESEND_API_KEY` and
+`EMAIL_FROM` in `.env.local` (server-only — never `NEXT_PUBLIC_*`).
+
+**Eligibility** (local calendar dates, open/unpaid payments only):
+
+| Kind | When eligible |
+|------|----------------|
+| `upcoming` | Due date is within the next 3 days (not today or past) |
+| `due` | Due date is today and payment is not yet late |
+| `late` | Effective status is late (overdue and unpaid) |
+
+Each payment can receive at most one successful reminder per kind per
+owner (`rent_reminder_logs` unique constraint). Demo mode simulates sends
+in memory without contacting Resend.
+
+**Idempotency**: a `pending` log row is reserved before calling Resend
+(with an `Idempotency-Key` header). The row is updated to `sent` or
+`failed` afterward; duplicate successful sends are blocked by the DB
+constraint and pre-send checks. If a send is interrupted while
+`pending`, reservations older than 5 minutes are automatically recovered
+to `failed` (using `reserved_at`) so the landlord can retry safely.
+
+For manual email rent reminders, also run
+`supabase/migrations/0005_rent_reminder_logs_reserved_at.sql` after 0004.
+
+## Stripe payment collection (P2.8A–P2.8E)
+
+Migrations `0006`–`0009` support Stripe Connect Express, Checkout Sessions,
+webhook idempotency, and payment reconciliation.
+
+Apply in order after `0005`:
+
+1. `0006_profiles_stripe_connect.sql` — Connect fields on `profiles`
+2. `0007_stripe_checkout_sessions.sql` — checkout session audit table
+3. `0008_stripe_webhook_events.sql` — webhook idempotency/audit table
+4. `0009_stripe_checkout_sessions_reconciled_at.sql` — reconciliation marker
+
+### Environment (server-only)
+
+```bash
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+SUPABASE_SERVICE_ROLE_KEY=...   # webhook processing only
+```
+
+Never use `NEXT_PUBLIC_*` for these values.
+
+### Collect rent (P2.8C)
+
+Landlords with a connected Stripe account can create a Checkout Session for
+an open rent payment from `/dashboard/rent/[id]`. The outstanding balance is
+calculated server-side; the client sends only `rent_payment_id`.
+
+### Webhook endpoint (P2.8D–P2.8E)
+
+`POST /api/webhooks/stripe` — public to Stripe, no Supabase user session.
+
+Flow:
+
+1. Verify `Stripe-Signature` against raw body (`STRIPE_WEBHOOK_SECRET`)
+2. Insert/dedupe `stripe_webhook_events` by `stripe_event_id`
+3. For `checkout.session.completed`: correlate checkout session, validate
+   amounts/ownership, reconcile into `rent_payments`
+4. Mark webhook event `processed` (or `failed` for permanent errors)
+
+Returning from Checkout success URL does **not** confirm payment — only the
+webhook reconciles.
+
+### Reconciliation semantics (P2.8E)
+
+Authoritative event: `checkout.session.completed` only (not
+`payment_intent.succeeded`).
+
+Amount validation:
+
+- Stripe `amount_total` must equal `stripe_checkout_sessions.amount_cents`
+- Currency must be `usd`
+- Received amount must not exceed current outstanding balance
+  (`getPaymentOutstandingAmount`)
+- Overpayment or amount mismatch → `rent_payments` unchanged, webhook
+  event marked `failed`
+
+Full payment (received ≥ outstanding):
+
+| Stored status | Result |
+|---------------|--------|
+| `pending` / `late` | `paid`, invoice `amount` unchanged, `payment_method: card` |
+| `partial` | `paid`, `amount` = collected total |
+
+Partial payment (received < outstanding):
+
+| Stored status | Result |
+|---------------|--------|
+| `pending` / `late` | `partial`, `amount` = received |
+| `partial` | `partial`, `amount` = prior collected + received |
+
+Idempotency:
+
+- `stripe_webhook_events.stripe_event_id` — duplicate processed events → HTTP 200, no reprocessing
+- `stripe_checkout_sessions.reconciled_at` — duplicate checkout completion → no double-count
+- Optimistic lock on `rent_payments` (`status` + `amount` unchanged since read)
+
+### Test-mode verification
+
+1. Complete Stripe Connect onboarding in Settings
+2. Create a Checkout Session for an open rent payment
+3. Pay in Stripe test mode
+4. Forward webhooks: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+5. Confirm `rent_payments` updated and `stripe_checkout_sessions.reconciled_at` set
+6. Replay the same event ID — payment must not change twice
+
+### Payment observability (P2.8F)
+
+The rent payment detail page (`/dashboard/rent/[id]`) shows Stripe checkout
+session history for the authenticated landlord:
+
+| Display state | Meaning |
+|---------------|---------|
+| Awaiting payment | Open checkout link for the current (or matching) outstanding amount |
+| Expired | Checkout link expired — create a new link |
+| Payment recorded | `reconciled_at` is set — rent was updated by webhook |
+| Processing | Checkout completed on Stripe but not yet reconciled in RentPilot |
+| Outdated link | Session amount no longer matches current outstanding balance |
+| Could not record | Reconciliation failed safely — verify rent status manually |
+
+**Confirmation rule:** Returning from Stripe Checkout (`?checkout=success`) is
+**not** payment confirmation. Only `reconciled_at` on a checkout session (via
+webhook reconciliation) confirms the payment was recorded.
+
+**Currency / region:** RentPilot creates **US Connect Express** accounts and
+**USD** checkout sessions only (`country: "US"` in Connect onboarding). Stripe
+account availability depends on Stripe's policies; some countries (including
+India) may be invite-only. RentPilot does not bypass Stripe country
+restrictions.
+
+**Demo mode:** No Stripe API calls, no real checkout sessions in Supabase.
+Demo may show simulated session fixtures for UI preview only.
+
+**Secrets for live E2E** (server-only, never `NEXT_PUBLIC_*`):
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
 ## Scripts
 
 ```bash
@@ -166,7 +326,10 @@ Do not commit `.env.local` or any service-role keys.
 
 ## Security
 
-- Service-role keys are never used or exposed in Phase 1.
+- Service-role keys are never exposed to the browser. The service role is
+  used only by the Stripe webhook handler (`/api/webhooks/stripe`) to write
+  webhook events and reconcile payments (tables with RLS and no landlord
+  policies).
 - All Supabase access uses the public anon key from the browser/server,
   protected entirely by Row Level Security policies scoped to
   `auth.uid()`.

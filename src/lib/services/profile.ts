@@ -160,6 +160,14 @@ export async function updateProfile(
         full_name: cleaned.full_name,
         company_name: cleaned.company_name,
         avatar_url: user.profile?.avatar_url ?? null,
+        stripe_connect_account_id:
+          user.profile?.stripe_connect_account_id ?? null,
+        stripe_connect_onboarding_status:
+          user.profile?.stripe_connect_onboarding_status ?? "not_started",
+        stripe_connect_charges_enabled:
+          user.profile?.stripe_connect_charges_enabled ?? false,
+        stripe_connect_payouts_enabled:
+          user.profile?.stripe_connect_payouts_enabled ?? false,
         created_at: user.profile?.created_at ?? now,
         updated_at: now,
       },

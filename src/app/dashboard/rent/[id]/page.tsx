@@ -5,6 +5,9 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { DeleteRentPaymentButton } from "@/components/forms/DeleteRentPaymentButton";
+import { StripeCheckoutStatusCard } from "@/components/payments/StripeCheckoutStatusCard";
+import { CollectRentButton } from "@/components/forms/CollectRentButton";
+import { SendRentReminderButton } from "@/components/forms/SendRentReminderButton";
 import {
   formatCurrency,
   formatCurrencyPrecise,
@@ -13,20 +16,40 @@ import {
   formatPaymentMethod,
 } from "@/lib/utils";
 import { getPaymentOutstandingAmount } from "@/lib/services/metrics";
+import { getRentReminderPreview } from "@/lib/services/rent-reminders";
 import { getRentPayment } from "@/lib/services/rent-payments";
+import { getRentCollectEligibility } from "@/lib/services/stripe-checkout";
+import { getRentPaymentStripeStatus } from "@/lib/services/stripe-checkout-sessions";
 import { getTenant } from "@/lib/services/tenants";
+import { getCurrentUser } from "@/lib/services/auth";
+import { Alert } from "@/components/ui/Alert";
 
 export default async function RentPaymentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const reminderSent =
+    typeof query.reminderSent === "string" ? query.reminderSent : null;
+  const checkoutReturn =
+    typeof query.checkout === "string" ? query.checkout : null;
   const { data: payment, error } = await getRentPayment(id);
 
   if (error || !payment) notFound();
 
+  const user = await getCurrentUser();
+
   const { data: tenant } = await getTenant(payment.tenant_id);
+  const reminderPreviewResult = await getRentReminderPreview(id);
+  const reminderPreview = reminderPreviewResult.data;
+  const collectEligibilityResult = await getRentCollectEligibility(id);
+  const collectEligibility = collectEligibilityResult.data;
+  const stripeStatusResult = await getRentPaymentStripeStatus(id);
+  const stripeStatus = stripeStatusResult.data;
   const tenantMonthlyRent = tenant?.monthly_rent;
   const outstanding = getPaymentOutstandingAmount(payment, tenantMonthlyRent);
 
@@ -37,6 +60,18 @@ export default async function RentPaymentDetailPage({
         description={`${payment.tenant?.full_name ?? "Unknown tenant"} · ${payment.property?.name ?? "Unknown property"}`}
         actions={
           <>
+            {collectEligibility && (
+              <CollectRentButton
+                paymentId={payment.id}
+                eligibility={collectEligibility}
+              />
+            )}
+            {reminderPreview && (
+              <SendRentReminderButton
+                paymentId={payment.id}
+                preview={reminderPreview}
+              />
+            )}
             <ButtonLink
               href={`/dashboard/rent/${payment.id}/edit`}
               variant="outline"
@@ -51,6 +86,46 @@ export default async function RentPaymentDetailPage({
           </>
         }
       />
+
+      {checkoutReturn === "simulated" && (
+        <Alert variant="warning" className="mb-6 max-w-3xl">
+          Payment collection simulated — no Razorpay link was created and no real
+          payment can be collected in demo mode.
+        </Alert>
+      )}
+
+      {checkoutReturn === "success" && (
+        <Alert variant="info" className="mb-6 max-w-3xl">
+          {stripeStatus?.hasReconciledSession
+            ? "Payment recorded. This rent payment has been updated in RentPilot."
+            : "You returned from the payment page. Payment submitted — waiting for confirmation. This page does not confirm payment by itself."}
+        </Alert>
+      )}
+
+      {checkoutReturn === "cancel" && (
+        <Alert variant="info" className="mb-6 max-w-3xl">
+          Checkout was cancelled. No payment was made and this rent record is
+          unchanged.
+        </Alert>
+      )}
+
+      {reminderSent && (
+        <Alert variant="success" className="mb-6 max-w-3xl">
+          {user?.isDemo
+            ? `Rent reminder (${reminderSent}) simulated — no email was sent.`
+            : `Rent reminder (${reminderSent}) sent successfully.`}
+        </Alert>
+      )}
+
+      {reminderPreview && !reminderPreview.canSend && (
+        <Alert variant="warning" className="mb-6 max-w-3xl">
+          {reminderPreview.missingEmail
+            ? "This tenant does not have an email address — reminders cannot be sent."
+            : reminderPreview.eligibleKinds.length === 0
+              ? "This payment is not eligible for a reminder right now."
+              : "All eligible reminder types have already been sent for this payment."}
+        </Alert>
+      )}
 
       <Card className="max-w-3xl">
         <CardHeader>
@@ -135,6 +210,18 @@ export default async function RentPaymentDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      {stripeStatus &&
+        (stripeStatus.isDemo || stripeStatus.sessions.length > 0) && (
+        <Card className="mt-6 max-w-3xl">
+          <CardHeader>
+            <CardTitle>Payment collection</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StripeCheckoutStatusCard status={stripeStatus} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

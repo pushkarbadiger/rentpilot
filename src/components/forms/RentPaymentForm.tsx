@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useActionState } from "react";
+import { useMemo, useState, useActionState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/Alert";
@@ -38,7 +37,10 @@ export function RentPaymentForm({
     payment?.amount != null ? String(payment.amount) : ""
   );
 
-  const selectedTenant = tenantId ? tenantById.get(tenantId) : undefined;
+  const selectedTenant = tenantId
+    ? tenantById.get(tenantId)
+    : undefined;
+
   const propertyLocked = Boolean(selectedTenant?.property_id);
 
   const availableProperties = selectedTenant?.property_id
@@ -47,7 +49,10 @@ export function RentPaymentForm({
 
   function handleTenantChange(nextTenantId: string) {
     setTenantId(nextTenantId);
-    const tenant = nextTenantId ? tenantById.get(nextTenantId) : undefined;
+
+    const tenant = nextTenantId
+      ? tenantById.get(nextTenantId)
+      : undefined;
 
     if (tenant?.property_id) {
       setPropertyId(tenant.property_id);
@@ -62,7 +67,11 @@ export function RentPaymentForm({
 
   return (
     <form action={formAction} className="space-y-6">
-      {state.error && <Alert variant="error">{state.error}</Alert>}
+      {state.error && (
+        <Alert variant="error">
+          {state.error}
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <FormField
@@ -75,13 +84,18 @@ export function RentPaymentForm({
             id="tenant_id"
             name="tenant_id"
             value={tenantId}
-            onChange={(e) => handleTenantChange(e.target.value)}
+            onChange={(e) =>
+              handleTenantChange(e.target.value)
+            }
           >
             <option value="">Select a tenant</option>
+
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.full_name}
-                {t.property?.name ? ` · ${t.property.name}` : ""}
+                {t.property?.name
+                  ? ` · ${t.property.name}`
+                  : ""}
               </option>
             ))}
           </Select>
@@ -102,21 +116,39 @@ export function RentPaymentForm({
         >
           <Select
             id="property_id"
-            name="property_id"
             value={propertyId}
             disabled={propertyLocked}
-            onChange={(e) => setPropertyId(e.target.value)}
+            onChange={(e) =>
+              setPropertyId(e.target.value)
+            }
           >
             <option value="">Select a property</option>
+
             {availableProperties.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </Select>
+
+          {/* 
+            Disabled HTML inputs/selects are NOT submitted with FormData.
+            This hidden input ensures property_id is always submitted,
+            even when the visible property selector is locked.
+          */}
+          <input
+            type="hidden"
+            name="property_id"
+            value={propertyId}
+          />
         </FormField>
 
-        <FormField label="Amount" htmlFor="amount" required error={errors.amount}>
+        <FormField
+          label="Amount"
+          htmlFor="amount"
+          required
+          error={errors.amount}
+        >
           <Input
             id="amount"
             name="amount"
@@ -124,11 +156,17 @@ export function RentPaymentForm({
             min={0}
             step="0.01"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) =>
+              setAmount(e.target.value)
+            }
           />
         </FormField>
 
-        <FormField label="Status" htmlFor="status" required>
+        <FormField
+          label="Status"
+          htmlFor="status"
+          required
+        >
           <Select
             id="status"
             name="status"
@@ -155,7 +193,10 @@ export function RentPaymentForm({
           />
         </FormField>
 
-        <FormField label="Payment date" htmlFor="payment_date">
+        <FormField
+          label="Payment date"
+          htmlFor="payment_date"
+        >
           <Input
             id="payment_date"
             name="payment_date"
@@ -164,14 +205,19 @@ export function RentPaymentForm({
           />
         </FormField>
 
-        <FormField label="Payment method" htmlFor="payment_method">
+        <FormField
+          label="Payment method"
+          htmlFor="payment_method"
+        >
           <Select
             id="payment_method"
             name="payment_method"
             defaultValue={payment?.payment_method ?? ""}
           >
             <option value="">Not specified</option>
-            <option value="bank_transfer">Bank transfer</option>
+            <option value="bank_transfer">
+              Bank transfer
+            </option>
             <option value="card">Card</option>
             <option value="cash">Cash</option>
             <option value="check">Check</option>
@@ -180,7 +226,11 @@ export function RentPaymentForm({
         </FormField>
 
         <div className="sm:col-span-2">
-          <FormField label="Notes" htmlFor="notes" error={errors.notes}>
+          <FormField
+            label="Notes"
+            htmlFor="notes"
+            error={errors.notes}
+          >
             <Textarea
               id="notes"
               name="notes"
@@ -192,7 +242,10 @@ export function RentPaymentForm({
       </div>
 
       <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+        >
           {pending ? "Saving…" : submitLabel}
         </Button>
       </div>

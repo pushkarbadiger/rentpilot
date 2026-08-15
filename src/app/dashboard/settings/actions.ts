@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { profileSchema, flattenZodErrors } from "@/lib/validation";
 import { pathWithDemoNoticeIfNeeded } from "@/lib/demo-write";
 import { updateProfile } from "@/lib/services/profile";
+import {
+  createStripeConnectAccountLink,
+} from "@/lib/services/stripe-connect";
 
 export interface ProfileFormState {
   error?: string;
@@ -31,4 +34,15 @@ export async function updateProfileAction(
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
   redirect(await pathWithDemoNoticeIfNeeded("/dashboard/settings?saved=1"));
+}
+
+export async function startStripeConnectOnboardingAction(): Promise<{
+  error?: string;
+}> {
+  const { data, error } = await createStripeConnectAccountLink();
+  if (error || !data?.url) {
+    return { error: error ?? "Could not start Stripe setup. Please try again." };
+  }
+
+  redirect(data.url);
 }

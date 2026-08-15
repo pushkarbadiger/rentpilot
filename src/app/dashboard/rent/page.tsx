@@ -2,10 +2,10 @@ import Link from "next/link";
 import { PlusCircle, Receipt, Wallet, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ErrorState } from "@/components/ui/Alert";
+import { Alert, ErrorState } from "@/components/ui/Alert";
 import { ListToolbar } from "@/components/ui/ListToolbar";
 import { Pagination } from "@/components/ui/Pagination";
 import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
@@ -22,6 +22,18 @@ import { listTenants } from "@/lib/services/tenants";
 import { listProperties } from "@/lib/services/properties";
 import { getRecentMonthOptions, parseListQuery } from "@/lib/list-query";
 import { DeleteRentPaymentButton } from "@/components/forms/DeleteRentPaymentButton";
+import { GenerateRecurringRentForm } from "@/components/forms/GenerateRecurringRentForm";
+import { BatchRentReminderForm } from "@/components/forms/BatchRentReminderForm";
+import {
+  generateRecurringRentAction,
+  previewBatchRentReminderAction,
+} from "./actions";
+import {
+  getCurrentBillingMonth,
+  previewRecurringRentGeneration,
+} from "@/lib/services/recurring-rent";
+import { getBatchRentReminderPreview } from "@/lib/services/rent-reminders";
+import { getCurrentUser } from "@/lib/services/auth";
 
 export default async function RentPage({
   searchParams,
@@ -30,13 +42,22 @@ export default async function RentPage({
 }) {
   const params = await searchParams;
   const query = parseListQuery(params);
+  const generateMonth =
+    typeof params.generateMonth === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(params.generateMonth)
+      ? params.generateMonth
+      : getCurrentBillingMonth();
+  const monthOptions = getRecentMonthOptions(36);
 
-  const [paymentsResult, metricsResult, tenantsResult, propertiesResult] =
+  const [paymentsResult, metricsResult, tenantsResult, propertiesResult, previewResult, batchReminderPreviewResult, user] =
     await Promise.all([
       listRentPaymentsPage(query),
       getRentMonthMetrics(),
       listTenants(),
       listProperties(),
+      previewRecurringRentGeneration(generateMonth),
+      getBatchRentReminderPreview("late"),
+      getCurrentUser(),
     ]);
 
   const { data: result, error } = paymentsResult;
@@ -50,6 +71,16 @@ export default async function RentPage({
   );
   const propertyOptions =
     propertiesResult.data?.map((p) => ({ value: p.id, label: p.name })) ?? [];
+  const generationPreview = previewResult.data;
+  const batchReminderPreview = batchReminderPreviewResult.data;
+  const generated = params.generated === "1";
+  const createdCount = Number(params.created ?? "0");
+  const batchReminderDone = params.batchReminder === "1";
+  const batchSent = Number(params.sent ?? "0");
+  const batchFailed = Number(params.failed ?? "0");
+  const batchEligible = Number(params.eligible ?? "0");
+  const batchMissingEmail = Number(params.missingEmail ?? "0");
+  const batchAlreadyReminded = Number(params.alreadyReminded ?? "0");
 
   return (
     <div>
@@ -63,6 +94,73 @@ export default async function RentPage({
           </ButtonLink>
         }
       />
+
+      {generated && user && !user.isDemo && (
+        <Alert variant="success" className="mb-6">
+          {createdCount > 0
+            ? `Generated ${createdCount} rent record${createdCount === 1 ? "" : "s"}.`
+            : "Rent generation complete — no new records were needed."}
+        </Alert>
+      )}
+
+      {batchReminderDone && (
+        <Alert variant={batchFailed > 0 ? "warning" : "success"} className="mb-6">
+          {user?.isDemo ? "Simulated batch — no emails were sent. " : ""}
+          {batchEligible} eligible · {batchSent} sent
+          {batchFailed > 0 ? ` · ${batchFailed} failed` : ""}
+          {batchMissingEmail > 0
+            ? ` · ${batchMissingEmail} skipped (missing email)`
+            : ""}
+          {batchAlreadyReminded > 0
+            ? ` · ${batchAlreadyReminded} already reminded`
+            : ""}
+        </Alert>
+      )}
+
+      {batchReminderPreview && (
+        <Card className="mb-6">
+          <CardContent>
+            <h2 className="mb-1 text-sm font-semibold text-slate-900">
+              Send rent reminders
+            </h2>
+            <p className="mb-4 text-sm text-slate-500">
+              Manually email tenants about upcoming, due, or overdue rent. Each
+              payment can receive one reminder per type.
+            </p>
+            <BatchRentReminderForm
+              previewAction={previewBatchRentReminderAction}
+              initialKind="late"
+              initialPreview={batchReminderPreview}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {previewResult.error ? (
+        <Alert variant="error" className="mb-6">
+          {previewResult.error}
+        </Alert>
+      ) : (
+        generationPreview && (
+          <Card className="mb-6">
+            <CardContent>
+              <h2 className="mb-1 text-sm font-semibold text-slate-900">
+                Generate monthly rent
+              </h2>
+              <p className="mb-4 text-sm text-slate-500">
+                Create pending rent records for active tenants who do not already
+                have a payment for the selected month.
+              </p>
+              <GenerateRecurringRentForm
+                action={generateRecurringRentAction}
+                monthOptions={monthOptions}
+                selectedMonth={generateMonth}
+                preview={generationPreview}
+              />
+            </CardContent>
+          </Card>
+        )
+      )}
 
       {metrics && (
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,7 +201,7 @@ export default async function RentPage({
           { value: "partial", label: "Partial" },
         ]}
         propertyOptions={propertyOptions}
-        monthOptions={getRecentMonthOptions()}
+        monthOptions={monthOptions}
         sortOptions={[
           { value: "due_date", label: "Due date" },
           { value: "amount", label: "Amount" },

@@ -268,11 +268,13 @@ export async function getRentPayment(
 }
 
 function cleanPaymentValues(values: RentPaymentFormValues) {
+  const dueDate = values.due_date;
   return {
     tenant_id: values.tenant_id,
     property_id: values.property_id,
     amount: values.amount,
-    due_date: values.due_date,
+    due_date: dueDate,
+    billing_month: dueDate.slice(0, 7),
     payment_date: values.payment_date || null,
     status: values.status,
     payment_method: values.payment_method || null,

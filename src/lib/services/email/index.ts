@@ -43,7 +43,12 @@ class ResendEmailProvider implements EmailProvider {
         status: response.status,
         message: payload.message,
       });
-      throw new Error("Email delivery failed.");
+
+      throw new Error(
+        `Resend ${response.status}: ${
+          payload.message ?? "Unknown Resend error"
+        }`
+      );
     }
 
     return {
@@ -55,6 +60,7 @@ class ResendEmailProvider implements EmailProvider {
 
 const unconfiguredProvider: EmailProvider = {
   name: "unconfigured",
+
   async send() {
     throw new Error("Email provider is not configured.");
   },
@@ -63,7 +69,13 @@ const unconfiguredProvider: EmailProvider = {
 let resendProvider: ResendEmailProvider | null = null;
 
 export function getEmailProvider(): EmailProvider {
-  if (!isEmailConfigured) return unconfiguredProvider;
-  if (!resendProvider) resendProvider = new ResendEmailProvider();
+  if (!isEmailConfigured) {
+    return unconfiguredProvider;
+  }
+
+  if (!resendProvider) {
+    resendProvider = new ResendEmailProvider();
+  }
+
   return resendProvider;
 }

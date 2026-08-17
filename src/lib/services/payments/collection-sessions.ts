@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { demoStripeCheckoutSessions } from "@/lib/demo-data";
+import { demoRazorpaySessions, demoStripeCheckoutSessions } from "@/lib/demo-data";
 import type { RentPayment } from "@/lib/types/domain";
 import { getCurrentUser } from "../auth";
 import { getPaymentOutstandingAmount } from "../metrics";
@@ -66,23 +66,60 @@ function findLatestOpenSession(
   );
 }
 
+function listDemoSessions(
+  ownerId: string,
+  rentPaymentId: string
+): PaymentCollectionSession[] {
+  return demoRazorpaySessions
+    .filter(
+      (session) =>
+        session.owner_id === ownerId &&
+        session.rent_payment_id === rentPaymentId
+    )
+    .map((session) => ({
+      id: session.id,
+      owner_id: session.owner_id,
+      rent_payment_id: session.rent_payment_id,
+      tenant_id: session.tenant_id,
+      provider: session.provider,
+      provider_reference_id: session.provider_reference_id,
+      provider_payment_id: session.provider_payment_id,
+      amount_minor: session.amount_minor,
+      currency: session.currency,
+      status: session.status,
+      idempotency_key: session.idempotency_key,
+      collection_url: session.collection_url,
+      created_at: session.created_at,
+      completed_at: session.completed_at,
+      reconciled_at: session.reconciled_at,
+      metadata: session.metadata,
+    }));
+}
+
+function listDemoStripeLegacySessions(
+  ownerId: string,
+  rentPaymentId: string
+): PaymentCollectionSession[] {
+  return demoStripeCheckoutSessions
+    .filter(
+      (session) =>
+        session.owner_id === ownerId &&
+        session.rent_payment_id === rentPaymentId
+    )
+    .map((session) =>
+      stripeCheckoutSessionToCollectionSession(
+        session as Parameters<typeof stripeCheckoutSessionToCollectionSession>[0]
+      )
+    );
+}
+
 async function listStripeLegacySessions(
   ownerId: string,
   rentPaymentId: string,
   isDemo: boolean
 ): Promise<PaymentCollectionSession[]> {
   if (isDemo) {
-    return demoStripeCheckoutSessions
-      .filter(
-        (session) =>
-          session.owner_id === ownerId &&
-          session.rent_payment_id === rentPaymentId
-      )
-      .map((session) =>
-        stripeCheckoutSessionToCollectionSession(
-          session as Parameters<typeof stripeCheckoutSessionToCollectionSession>[0]
-        )
-      );
+    return listDemoStripeLegacySessions(ownerId, rentPaymentId);
   }
 
   const supabase = await createClient();
@@ -184,7 +221,10 @@ export async function listCollectionSessionsForPayment(
   isDemo: boolean
 ): Promise<PaymentCollectionSession[]> {
   if (isDemo) {
-    return listStripeLegacySessions(ownerId, rentPaymentId, true);
+    if (PAYMENT_COLLECTION_PROVIDER === "stripe") {
+      return listDemoStripeLegacySessions(ownerId, rentPaymentId);
+    }
+    return listDemoSessions(ownerId, rentPaymentId);
   }
 
   if (PAYMENT_COLLECTION_PROVIDER === "stripe") {

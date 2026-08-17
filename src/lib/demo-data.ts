@@ -318,7 +318,47 @@ export const demoRentPayments: RentPayment[] = [
   billing_month: payment.due_date.slice(0, 7),
 })) as RentPayment[];
 
-/** Simulated checkout sessions for demo UI only — never written to Supabase. */
+/** Simulated Razorpay payment link sessions for demo UI — never written to Supabase. */
+export const demoRazorpaySessions = [
+  {
+    id: "demo-rzp-session-1",
+    owner_id: DEMO_OWNER_ID,
+    rent_payment_id: "pay-5",
+    tenant_id: "ten-1",
+    provider: "razorpay" as const,
+    provider_reference_id: "plink_demo_open",
+    provider_payment_id: null,
+    amount_minor: 145000,
+    currency: "inr" as const,
+    status: "open" as const,
+    idempotency_key: "demo:razorpay:pay-5:open",
+    collection_url: null,
+    created_at: daysFromNow(-1) + "T12:00:00Z",
+    completed_at: null,
+    reconciled_at: null,
+    metadata: null,
+  },
+  {
+    id: "demo-rzp-session-2",
+    owner_id: DEMO_OWNER_ID,
+    rent_payment_id: "pay-3",
+    tenant_id: "ten-4",
+    provider: "razorpay" as const,
+    provider_reference_id: "plink_demo_reconciled",
+    provider_payment_id: "pay_demo_reconciled",
+    amount_minor: 210000,
+    currency: "inr" as const,
+    status: "complete" as const,
+    idempotency_key: "demo:razorpay:pay-3:complete",
+    collection_url: null,
+    created_at: daysFromNow(-5) + "T12:00:00Z",
+    completed_at: daysFromNow(-4) + "T12:00:00Z",
+    reconciled_at: daysFromNow(-4) + "T12:05:00Z",
+    metadata: null,
+  },
+];
+
+/** @deprecated Legacy Stripe demo sessions — kept for PAYMENT_COLLECTION_PROVIDER=stripe fallback. */
 export const demoStripeCheckoutSessions = [
   {
     id: "demo-checkout-1",

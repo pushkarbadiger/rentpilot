@@ -35,6 +35,12 @@ export function formatEmpty(
 }
 
 export function formatStatusLabel(status: string): string {
+  const statusLabels: Record<string, string> = {
+    open: "Pending",
+    late: "Overdue",
+  };
+
+  if (statusLabels[status]) return statusLabels[status];
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 

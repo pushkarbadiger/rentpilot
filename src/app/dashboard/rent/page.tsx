@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { PlusCircle, Receipt, Wallet, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import {
+  PlusCircle,
+  Receipt,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -15,7 +23,7 @@ import {
   formatDate,
   formatPaymentMethod,
 } from "@/lib/utils";
-import { getPaymentOutstandingAmount } from "@/lib/services/metrics";
+import { getPaymentOutstandingAmount, isPaymentDueInMonth } from "@/lib/services/metrics";
 import { getRentMonthMetrics } from "@/lib/services/dashboard";
 import { listRentPaymentsPage } from "@/lib/services/rent-payments";
 import { listTenants } from "@/lib/services/tenants";
@@ -34,6 +42,10 @@ import {
 } from "@/lib/services/recurring-rent";
 import { getBatchRentReminderPreview } from "@/lib/services/rent-reminders";
 import { getCurrentUser } from "@/lib/services/auth";
+import { RentStatusBreakdown } from "@/components/dashboard/RentStatusBreakdown";
+import { OverdueRentSection } from "@/components/dashboard/OverdueRentSection";
+import { UpcomingRentSection } from "@/components/dashboard/UpcomingRentSection";
+import { listRentPayments } from "@/lib/services/rent-payments";
 
 export default async function RentPage({
   searchParams,
@@ -49,19 +61,29 @@ export default async function RentPage({
       : getCurrentBillingMonth();
   const monthOptions = getRecentMonthOptions(36);
 
-  const [paymentsResult, metricsResult, tenantsResult, propertiesResult, previewResult, batchReminderPreviewResult, user] =
-    await Promise.all([
-      listRentPaymentsPage(query),
-      getRentMonthMetrics(),
-      listTenants(),
-      listProperties(),
-      previewRecurringRentGeneration(generateMonth),
-      getBatchRentReminderPreview("late"),
-      getCurrentUser(),
-    ]);
+  const [
+    paymentsResult,
+    allPaymentsResult,
+    metricsResult,
+    tenantsResult,
+    propertiesResult,
+    previewResult,
+    batchReminderPreviewResult,
+    user,
+  ] = await Promise.all([
+    listRentPaymentsPage(query),
+    listRentPayments(),
+    getRentMonthMetrics(),
+    listTenants(),
+    listProperties(),
+    previewRecurringRentGeneration(generateMonth),
+    getBatchRentReminderPreview("late"),
+    getCurrentUser(),
+  ]);
 
   const { data: result, error } = paymentsResult;
   const list = result?.items ?? [];
+  const allPayments = allPaymentsResult.data ?? [];
   const metrics = metricsResult.data;
   const tenantRentById = new Map(
     (tenantsResult.data ?? []).map((t) => [t.id, t.monthly_rent] as const)
@@ -82,21 +104,26 @@ export default async function RentPage({
   const batchMissingEmail = Number(params.missingEmail ?? "0");
   const batchAlreadyReminded = Number(params.alreadyReminded ?? "0");
 
+  const totalExpected = metrics?.expectedRent ?? 0;
+  const currentMonthPayments = allPayments.filter((p) =>
+    isPaymentDueInMonth(p, new Date())
+  );
+
   return (
-    <div>
-      <PageHeader
-        title="Rent tracking"
-        description="Monitor rent collection across your portfolio."
-        actions={
-          <ButtonLink href="/dashboard/rent/new">
-            <PlusCircle className="h-4 w-4" />
-            Record Payment
-          </ButtonLink>
-        }
-      />
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          title="Rent operations"
+          description="See what is due, identify who has not paid, take action, and track the result."
+        />
+        <ButtonLink href="/dashboard/rent/new">
+          <PlusCircle className="h-4 w-4" />
+          Record Payment
+        </ButtonLink>
+      </div>
 
       {generated && user && !user.isDemo && (
-        <Alert variant="success" className="mb-6">
+        <Alert variant="success">
           {createdCount > 0
             ? `Generated ${createdCount} rent record${createdCount === 1 ? "" : "s"}.`
             : "Rent generation complete — no new records were needed."}
@@ -104,7 +131,7 @@ export default async function RentPage({
       )}
 
       {batchReminderDone && (
-        <Alert variant={batchFailed > 0 ? "warning" : "success"} className="mb-6">
+        <Alert variant={batchFailed > 0 ? "warning" : "success"}>
           {user?.isDemo ? "Simulated batch — no emails were sent. " : ""}
           {batchEligible} eligible · {batchSent} sent
           {batchFailed > 0 ? ` · ${batchFailed} failed` : ""}
@@ -117,32 +144,64 @@ export default async function RentPage({
         </Alert>
       )}
 
-      {batchReminderPreview && (
-        <Card className="mb-6">
-          <CardContent>
-            <h2 className="mb-1 text-sm font-semibold text-slate-900">
-              Send rent reminders
-            </h2>
-            <p className="mb-4 text-sm text-slate-500">
-              Manually email tenants about upcoming, due, or overdue rent. Each
-              payment can receive one reminder per type.
-            </p>
-            <BatchRentReminderForm
-              previewAction={previewBatchRentReminderAction}
-              initialKind="late"
-              initialPreview={batchReminderPreview}
-            />
-          </CardContent>
-        </Card>
+      {metrics && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Due this month"
+            value={formatCurrency(metrics.expectedRent)}
+            icon={Wallet}
+            sublabel={`${allPayments.filter((p) => p.status !== "paid").length} open records`}
+          />
+          <StatCard
+            label="Collected"
+            value={formatCurrency(metrics.rentCollected)}
+            icon={CheckCircle2}
+            tone="success"
+            sublabel="Paid this month"
+          />
+          <StatCard
+            label="Outstanding"
+            value={formatCurrency(metrics.outstandingRent)}
+            icon={Clock}
+            tone={metrics.outstandingRent > 0 ? "warning" : undefined}
+            sublabel="Unpaid balance"
+          />
+          <StatCard
+            label="Overdue"
+            value={String(metrics.latePayments)}
+            icon={AlertCircle}
+            tone={metrics.latePayments > 0 ? "warning" : undefined}
+            sublabel={
+              metrics.latePayments > 0
+                ? "Requires follow-up"
+                : "All on track"
+            }
+          />
+        </div>
       )}
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <RentStatusBreakdown
+            payments={currentMonthPayments}
+            totalExpected={totalExpected}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <OverdueRentSection payments={allPayments} />
+        </div>
+        <div className="lg:col-span-1">
+          <UpcomingRentSection payments={allPayments} />
+        </div>
+      </div>
+
       {previewResult.error ? (
-        <Alert variant="error" className="mb-6">
+        <Alert variant="error">
           {previewResult.error}
         </Alert>
       ) : (
         generationPreview && (
-          <Card className="mb-6">
+          <Card>
             <CardContent>
               <h2 className="mb-1 text-sm font-semibold text-slate-900">
                 Generate monthly rent
@@ -162,33 +221,37 @@ export default async function RentPage({
         )
       )}
 
-      {metrics && (
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Expected this month"
-            value={formatCurrency(metrics.expectedRent)}
-            icon={Wallet}
-          />
-          <StatCard
-            label="Collected this month"
-            value={formatCurrency(metrics.rentCollected)}
-            icon={CheckCircle2}
-            tone="success"
-          />
-          <StatCard
-            label="Outstanding this month"
-            value={formatCurrency(metrics.outstandingRent)}
-            icon={Clock}
-            tone={metrics.outstandingRent > 0 ? "warning" : "default"}
-          />
-          <StatCard
-            label="Late this month"
-            value={String(metrics.latePayments)}
-            icon={AlertCircle}
-            tone={metrics.latePayments > 0 ? "warning" : "default"}
-          />
-        </div>
+      {batchReminderPreview && (
+        <Card>
+          <CardContent>
+            <h2 className="mb-1 text-sm font-semibold text-slate-900">
+              Send rent reminders
+            </h2>
+            <p className="mb-4 text-sm text-slate-500">
+              Manually email tenants about upcoming, due, or overdue rent. Each
+              payment can receive one reminder per type.
+            </p>
+            <BatchRentReminderForm
+              previewAction={previewBatchRentReminderAction}
+              initialKind="late"
+              initialPreview={batchReminderPreview}
+            />
+          </CardContent>
+        </Card>
       )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-sm font-semibold text-slate-900">
+          All rent payments
+        </h2>
+        <Link
+          href="/dashboard/payments"
+          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+        >
+          Financial overview
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
 
       <ListToolbar
         query={query}
@@ -227,7 +290,7 @@ export default async function RentPage({
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="min-w-[860px] w-full text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50/60 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-medium">Tenant</th>
@@ -293,13 +356,21 @@ export default async function RentPage({
                         <PaymentStatusBadge payment={payment} />
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <DeleteRentPaymentButton
-                          id={payment.id}
-                          tenantName={
-                            payment.tenant?.full_name ?? "Unknown tenant"
-                          }
-                          compact
-                        />
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/dashboard/rent/${payment.id}`}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+                          >
+                            View
+                          </Link>
+                          <DeleteRentPaymentButton
+                            id={payment.id}
+                            tenantName={
+                              payment.tenant?.full_name ?? "Unknown tenant"
+                            }
+                            compact
+                          />
+                        </div>
                       </td>
                     </tr>
                   );

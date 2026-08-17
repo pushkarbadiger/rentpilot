@@ -3,7 +3,7 @@ import { cn, formatStatusLabel } from "@/lib/utils";
 type Tone = "neutral" | "green" | "amber" | "red" | "blue" | "slate";
 
 const toneClasses: Record<Tone, string> = {
-  neutral: "bg-slate-100 text-slate-700",
+  neutral: "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200",
   green: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
   amber: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
   red: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
@@ -36,18 +36,23 @@ export function Badge({
 const propertyStatusTone: Record<string, Tone> = {
   active: "green",
   inactive: "slate",
+  occupied: "green",
+  vacant: "amber",
 };
 
 const tenantStatusTone: Record<string, Tone> = {
   active: "green",
   pending: "amber",
   former: "slate",
+  inactive: "slate",
 };
 
 const paymentStatusTone: Record<string, Tone> = {
   paid: "green",
   pending: "blue",
   late: "red",
+  overdue: "red",
+  open: "amber",
   partial: "amber",
 };
 

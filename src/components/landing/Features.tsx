@@ -1,10 +1,10 @@
 import {
+  Bell,
   Building2,
-  LineChart,
-  Receipt,
-  Sparkles,
+  Bot,
+  BarChart3,
+  ReceiptText,
   Users,
-  Wallet,
 } from "lucide-react";
 
 const FEATURES = [
@@ -12,70 +12,78 @@ const FEATURES = [
     icon: Building2,
     title: "Property management",
     description:
-      "Track every property in your portfolio with details on units, rent, status, and notes — all in one clean workspace.",
+      "See every property, unit, occupancy state, and key detail in one organized view — no more scattered spreadsheets.",
   },
   {
     icon: Users,
-    title: "Tenant management",
+    title: "Tenant records",
     description:
-      "Keep tenant contact info, lease dates, and deposit details organized and easy to search across properties.",
+      "Keep contact details, lease terms, and unit assignments tied together and always within reach.",
   },
   {
-    icon: Receipt,
-    title: "Rent tracking",
+    icon: ReceiptText,
+    title: "Rent payments",
     description:
-      "Log payments, monitor due dates, and instantly see what's collected, pending, or overdue this month.",
+      "Track what is paid, pending, overdue, or coming due — with a clear picture of your monthly collection.",
   },
   {
-    icon: LineChart,
-    title: "Portfolio overview",
+    icon: Bell,
+    title: "Automated reminders",
     description:
-      "A real-time dashboard summarizing occupancy, cash flow, and activity across your entire rental business.",
+      "Send rent reminders by email in one click, so follow-up is consistent and timely without the busywork.",
   },
   {
-    icon: Sparkles,
-    title: "AI-ready automation",
+    icon: BarChart3,
+    title: "Portfolio analytics",
     description:
-      "A clean service architecture designed for AI rent reminders, maintenance triage, and cash-flow forecasting — coming soon.",
+      "Monitor occupancy rates, collection performance, and outstanding balances across your entire portfolio.",
   },
   {
-    icon: Wallet,
-    title: "Built to scale",
+    icon: Bot,
+    title: "AI assistance",
     description:
-      "Multi-user organizations, payments, and notifications are on the roadmap — the foundation is ready for it today.",
+      "Ask RentPilot AI about the properties, tenants, and payments in your workspace to get faster answers.",
   },
 ];
 
 export function Features() {
   return (
-    <section id="features" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Everything you need to run your rentals
-        </h2>
-        <p className="mt-4 text-base text-slate-600">
-          Phase 1 covers the core foundation — property, tenant, and rent
-          management — with an architecture ready for what&apos;s next.
-        </p>
-      </div>
+    <section id="features" className="bg-slate-50 py-24 sm:py-32">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold tracking-[0.2em] text-indigo-600">
+            ONE CALM WORKSPACE
+          </p>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+            Everything you need to run
+            <br className="hidden sm:block" />
+            a better rental operation.
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-slate-600">
+            RentPilot brings daily property management into one connected
+            system — so the important work is visible, organized, and ready to
+            act on.
+          </p>
+        </div>
 
-      <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map((feature) => (
-          <div
-            key={feature.title}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50 transition-shadow hover:shadow-md"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <feature.icon className="h-5 w-5" strokeWidth={1.75} />
-            </div>
-            <h3 className="mt-4 text-base font-semibold text-slate-900">
-              {feature.title}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              {feature.description}
-            </p>
-          </div>
-        ))}
+        <div className="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, title, description }) => (
+            <article
+              key={title}
+              className="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition-all duration-200 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-100/40"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-100">
+                <Icon className="h-5 w-5" strokeWidth={1.8} />
+              </span>
+              <h3 className="mt-5 text-base font-semibold text-slate-950">
+                {title}
+              </h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-slate-600">
+                {description}
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

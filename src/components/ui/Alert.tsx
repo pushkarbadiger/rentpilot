@@ -51,7 +51,7 @@ export function Alert({
 
 export function ErrorState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50/50 px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-red-200 bg-red-50/50 px-6 py-12 text-center">
       <XCircle className="mb-3 h-8 w-8 text-red-500" />
       <h3 className="text-base font-semibold text-slate-900">
         Something went wrong

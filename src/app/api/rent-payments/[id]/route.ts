@@ -46,7 +46,7 @@ export async function PATCH(
   if (existing.error || !existing.data) {
     return NextResponse.json(
       { error: existing.error ?? "Payment not found" },
-      { status: 404 }
+      { status: existing.error === "Not authenticated" ? 401 : 404 }
     );
   }
 
@@ -62,7 +62,7 @@ export async function PATCH(
   if (error || !data) {
     return NextResponse.json(
       { error: error ?? "Could not update payment" },
-      { status: 500 }
+      { status: error === "Not authenticated" ? 401 : 500 }
     );
   }
 
@@ -76,7 +76,10 @@ export async function DELETE(
   const { id } = await params;
   const { error } = await deleteRentPayment(id);
   if (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    return NextResponse.json(
+      { error },
+      { status: error === "Not authenticated" ? 401 : 500 }
+    );
   }
   return NextResponse.json({ success: true });
 }

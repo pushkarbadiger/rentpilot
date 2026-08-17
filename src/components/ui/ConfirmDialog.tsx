@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Button } from "./Button";
 
 export function ConfirmDialog({
@@ -20,6 +20,16 @@ export function ConfirmDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, loading]);
 
   async function handleConfirm() {
     setLoading(true);
@@ -39,11 +49,14 @@ export function ConfirmDialog({
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="confirm-dialog-title"
+          aria-labelledby={titleId}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !loading) setOpen(false);
+          }}
         >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
             <h2
-              id="confirm-dialog-title"
+              id={titleId}
               className="text-base font-semibold text-slate-900"
             >
               {title}

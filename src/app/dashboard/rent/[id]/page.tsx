@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -55,6 +56,14 @@ export default async function RentPaymentDetailPage({
 
   return (
     <div>
+      <Link
+        href="/dashboard/rent"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to rent operations
+      </Link>
+
       <PageHeader
         title="Rent payment"
         description={`${payment.tenant?.full_name ?? "Unknown tenant"} · ${payment.property?.name ?? "Unknown property"}`}

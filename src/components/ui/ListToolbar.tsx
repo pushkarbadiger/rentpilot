@@ -32,7 +32,7 @@ export function ListToolbar({
   return (
     <form
       method="get"
-      className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50 sm:flex-row sm:flex-wrap sm:items-end"
+      className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/40 sm:flex-row sm:flex-wrap sm:items-end"
     >
       <div className="min-w-[200px] flex-1">
         <label htmlFor="list-q" className="mb-1.5 block text-sm font-medium text-slate-700">

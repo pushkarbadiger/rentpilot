@@ -17,6 +17,7 @@ export function SignUpForm() {
   return (
     <form action={formAction} className="space-y-5">
       {state.error && <Alert variant="error">{state.error}</Alert>}
+      {state.message && <Alert variant="success">{state.message}</Alert>}
 
       <FormField label="Full name" htmlFor="fullName" required error={errors.fullName}>
         <Input id="fullName" name="fullName" placeholder="Jamie Rivera" autoComplete="name" />

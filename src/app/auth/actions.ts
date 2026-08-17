@@ -8,7 +8,33 @@ import { getSafeRedirectPath } from "@/lib/utils";
 
 export interface AuthFormState {
   error?: string;
+  message?: string;
   fieldErrors?: Record<string, string>;
+}
+
+function getAuthRedirectUrl(): string | null {
+  const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (configuredOrigin) {
+    try {
+      const url = new URL(configuredOrigin);
+      const isLocalHttp =
+        url.protocol === "http:" &&
+        (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+
+      if (url.protocol === "https:" || isLocalHttp) {
+        return new URL("/auth/callback?next=/dashboard", url).toString();
+      }
+    } catch {
+      // Use the safe local-development fallback below.
+    }
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "http://localhost:3000/auth/callback?next=/dashboard";
+  }
+
+  return null;
 }
 
 export async function signUpAction(
@@ -39,6 +65,14 @@ export async function signUpAction(
     return { fieldErrors };
   }
 
+  const emailRedirectTo = getAuthRedirectUrl();
+  if (!emailRedirectTo) {
+    return {
+      error:
+        "Account confirmation is not configured. Contact the application administrator.",
+    };
+  }
+
   const supabase = await createClient();
   if (!supabase) return { error: "Supabase client unavailable." };
 
@@ -47,14 +81,16 @@ export async function signUpAction(
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
+      emailRedirectTo,
     },
   });
 
   if (error) return { error: error.message };
 
-  // Belt-and-suspenders: ensure a profile row exists when the session is
-  // active (trigger may be missing on older Supabase projects).
-  if (signUpData.user) {
+  // Ensure a profile row only when an authenticated session is available.
+  // With email confirmation enabled, the auth trigger creates the profile
+  // and the callback establishes the session after verification.
+  if (signUpData.user && signUpData.session) {
     const { error: profileError } = await supabase.from("profiles").upsert(
       { id: signUpData.user.id, full_name: parsed.data.fullName },
       { onConflict: "id" }
@@ -62,6 +98,13 @@ export async function signUpAction(
     if (profileError) {
       console.error("[signup] profile upsert failed", profileError.message);
     }
+  }
+
+  if (!signUpData.session) {
+    return {
+      message:
+        "Check your email to confirm your account, then return here to sign in.",
+    };
   }
 
   redirect("/dashboard");

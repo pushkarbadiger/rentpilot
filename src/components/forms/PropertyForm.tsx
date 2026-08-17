@@ -37,7 +37,12 @@ export function PropertyForm({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <FormField label="Property name" htmlFor="name" required error={errors.name}>
+          <FormField
+            label="Property name"
+            htmlFor="name"
+            required
+            error={errors.name}
+          >
             <Input
               id="name"
               name="name"
@@ -48,7 +53,12 @@ export function PropertyForm({
         </div>
 
         <div className="sm:col-span-2">
-          <FormField label="Address" htmlFor="address" required error={errors.address}>
+          <FormField
+            label="Address"
+            htmlFor="address"
+            required
+            error={errors.address}
+          >
             <Input
               id="address"
               name="address"
@@ -59,11 +69,21 @@ export function PropertyForm({
         </div>
 
         <FormField label="City" htmlFor="city" required error={errors.city}>
-          <Input id="city" name="city" defaultValue={property?.city} placeholder="Austin" />
+          <Input
+            id="city"
+            name="city"
+            defaultValue={property?.city}
+            placeholder="Austin"
+          />
         </FormField>
 
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="State" htmlFor="state" required error={errors.state}>
+          <FormField
+            label="State"
+            htmlFor="state"
+            required
+            error={errors.state}
+          >
             <Input
               id="state"
               name="state"
@@ -103,7 +123,11 @@ export function PropertyForm({
         </FormField>
 
         <FormField label="Status" htmlFor="status" required>
-          <Select id="status" name="status" defaultValue={property?.status ?? "active"}>
+          <Select
+            id="status"
+            name="status"
+            defaultValue={property?.status ?? "active"}
+          >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </Select>

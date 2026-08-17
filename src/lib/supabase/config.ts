@@ -3,9 +3,12 @@
 // so the frontend is always usable during development, before a project
 // is connected.
 
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+export const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 export const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  "";
 
 /**
  * True once real Supabase credentials are present. When false, every

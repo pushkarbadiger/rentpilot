@@ -13,7 +13,7 @@ export function Header({
   const email = user.email || "";
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-sm sm:px-6">
       <div className="flex items-center gap-3">
         <MobileNav />
         {title && (

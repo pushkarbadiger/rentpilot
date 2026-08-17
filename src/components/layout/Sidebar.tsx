@@ -7,6 +7,7 @@ import {
   Building2,
   Users,
   IndianRupee,
+  Receipt,
   Bot,
   Settings,
   Home,
@@ -34,6 +35,11 @@ const navItems = [
     icon: IndianRupee,
   },
   {
+    href: "/dashboard/payments",
+    label: "Payments",
+    icon: Receipt,
+  },
+  {
     href: "/dashboard/ai",
     label: "RentPilot AI",
     icon: Bot,
@@ -53,7 +59,7 @@ export function SidebarNav({
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1 px-4">
+    <nav className="flex flex-col gap-1 px-3">
       {navItems.map((item) => {
         const Icon = item.icon;
 
@@ -68,17 +74,19 @@ export function SidebarNav({
             href={item.href}
             onClick={onNavigate}
             className={[
-              "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5",
-              "text-sm font-medium transition-colors",
+              "group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5",
+              "text-sm font-medium transition-all duration-150",
               isActive
-                ? "bg-violet-50 text-violet-700"
+                ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100"
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
             ].join(" ")}
           >
             <Icon
               className={[
-                "h-5 w-5 shrink-0",
-                isActive ? "text-violet-600" : "text-slate-500",
+                "h-5 w-5 shrink-0 transition-colors duration-150",
+                isActive
+                  ? "text-indigo-600"
+                  : "text-slate-400 group-hover:text-slate-600",
               ].join(" ")}
             />
 
@@ -93,23 +101,26 @@ export function SidebarNav({
 export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 bg-white md:flex md:flex-col">
-      <div className="flex h-20 shrink-0 items-center border-b border-slate-200 px-6">
+      <div className="flex h-16 shrink-0 items-center border-b border-slate-200 px-5">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3"
+          className="flex items-center gap-2.5 transition-opacity duration-150 hover:opacity-80"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-            <Home className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/20">
+            <Home className="h-4.5 w-4.5" />
           </div>
-
-          <span className="text-xl font-bold tracking-tight text-slate-900">
+          <span className="text-lg font-bold tracking-tight text-slate-900">
             RentPilot
           </span>
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-6">
+      <div className="flex-1 overflow-y-auto py-4">
         <SidebarNav />
+      </div>
+
+      <div className="border-t border-slate-200 px-5 py-4">
+        <p className="text-xs text-slate-400">RentPilot v0.1</p>
       </div>
     </aside>
   );

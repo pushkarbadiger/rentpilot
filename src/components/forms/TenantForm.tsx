@@ -139,7 +139,11 @@ export function TenantForm({
         </FormField>
 
         <FormField label="Status" htmlFor="status" required>
-          <Select id="status" name="status" defaultValue={tenant?.status ?? "active"}>
+          <Select
+            id="status"
+            name="status"
+            defaultValue={tenant?.status ?? "active"}
+          >
             <option value="active">Active</option>
             <option value="pending">Pending</option>
             <option value="former">Former</option>

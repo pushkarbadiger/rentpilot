@@ -3,11 +3,18 @@
 **Your rental portfolio, on autopilot.**
 
 RentPilot is an AI-ready rental property management platform for landlords
-and property managers. This is the **Phase 1 MVP**: the core SaaS
-foundation — landing page, authentication, dashboard, property management,
-tenant management, and rent tracking — built on Next.js and Supabase, with
-clean service boundaries ready for AI automation, payments, and
-multi-user organizations in later phases.
+and property managers. Built on Next.js and Supabase, it provides a
+complete SaaS foundation — landing page, authentication, dashboard,
+property management, tenant management, and rent tracking — with clean
+service boundaries ready for AI automation, payments, and multi-user
+organizations in later phases.
+
+Phase 2 adds a polished visual design system (CSS animations, consistent
+indigo palette, design tokens), a redesigned dashboard with portfolio
+health indicators and attention center, an enriched landing page with
+problem/solution, workflow, and CTA sections, improved auth flows (email
+confirmation, safe redirect URLs), proper 401 status codes on API routes,
+and a database migration for cross-table owner consistency enforcement.
 
 ## Tech stack
 
@@ -51,12 +58,19 @@ make changes stick.
    cp .env.example .env.local
    ```
 
-3. Fill in your project's URL and anon key (Project Settings -> API):
+3. Configure these environment variable names in `.env.local` (values come
+   from Supabase Project Settings -> API and must not be committed):
 
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+   NEXT_PUBLIC_APP_URL
    ```
+
+   `NEXT_PUBLIC_APP_URL` is the trusted application origin used in Supabase
+   confirmation emails (for example, your local development origin or deployed
+   HTTPS origin). `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is also supported as a
+   compatibility alternative to `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 4. Run the schema migration. Easiest path: open the Supabase SQL editor
    and paste the contents of `supabase/migrations/0001_init.sql`, then
@@ -80,6 +94,10 @@ make changes stick.
    `supabase/migrations/0007_stripe_checkout_sessions.sql`, and
    `supabase/migrations/0008_stripe_webhook_events.sql`.
 
+   For cross-table owner consistency enforcement, run
+   `supabase/migrations/0012_owner_consistency.sql` (see "Owner consistency
+   enforcement" section below).
+
    This creates `profiles`, `properties`, `tenants`, and `rent_payments`,
    with UUID primary keys, foreign keys, indexes, `created_at` /
    `updated_at` timestamps, and **Row Level Security** policies scoping
@@ -88,15 +106,27 @@ make changes stick.
    someone signs up.
 
 5. In Supabase Auth settings, make sure **Email** sign-in is enabled
-   (it is by default). For local development you can disable "Confirm
-   email" under Auth -> Providers -> Email so you can sign in immediately
-   after signing up.
+   (it is by default). Set the Auth **Site URL** to `NEXT_PUBLIC_APP_URL`, and
+   add this redirect URL to the allowed redirect list:
+
+   ```
+   NEXT_PUBLIC_APP_URL/auth/callback
+   ```
+
+   If **Confirm email** is disabled, signup creates a session and immediately
+   opens the dashboard. If it is enabled, RentPilot shows a confirmation notice;
+   the verification email returns through `/auth/callback`, creates the session,
+   and then opens the dashboard.
 
 6. Restart `npm run dev`. The demo banner disappears and `/signup` /
    `/login` create and authenticate real users backed by Supabase.
 
-No service-role key is required for Phase 1, and none is ever sent to
-the browser — everything runs through the anon key plus Row Level
+If the public Supabase variables are absent, RentPilot deliberately remains in
+demo mode: Demo Landlord and the bundled properties, tenants, and payments are
+available, but all mutations are simulated and never written to Supabase.
+
+No service-role key is required for core functionality, and none is ever sent
+to the browser — everything runs through the anon key plus Row Level
 Security.
 
 ## Project structure
@@ -104,22 +134,23 @@ Security.
 ```
 src/
   app/
-    page.tsx                  # Landing page
+    page.tsx                  # Landing page (multi-section marketing site)
     (auth)/login, /signup     # Auth pages (route group, shared layout)
     auth/actions.ts           # Server actions: sign up / login / logout
     auth/callback/route.ts    # Supabase auth callback (email/OAuth)
     dashboard/                # Protected app (layout checks auth)
-      page.tsx                # Overview: stats, activity, quick actions
+      page.tsx                # Overview: KPIs, portfolio health, attention center
       properties/             # List, new, [id], [id]/edit
       tenants/                # List, new, [id], [id]/edit
       rent/                   # List/overview, new, [id]/edit
+      ai/                     # AI chat assistant
     api/                      # REST-style API routes (same services layer)
   components/
-    ui/                       # Button, Card, Field, Badge, EmptyState, ...
+    ui/                       # Button, Card, Field, Badge, EmptyState, ConfirmDialog, ...
     layout/                   # Sidebar, Header, MobileNav, UserMenu
-    landing/                  # Hero, Features, ProductPreview, Footer
+    landing/                  # Hero, Features, ProductPreview, ProblemSolution, WorkflowSection, FinalCTA, Footer
     forms/                    # PropertyForm, TenantForm, RentPaymentForm
-    dashboard/                # StatCard-driven widgets for the overview
+    dashboard/                # AttentionCenter, QuickActions, RecentActivity, UpcomingRent, PropertyOverview
   lib/
     supabase/                 # Browser client, server client, middleware
     services/                 # properties, tenants, rent-payments, dashboard
@@ -129,6 +160,7 @@ src/
     validation.ts             # Zod schemas shared by forms + API routes
 supabase/
   migrations/0001_init.sql    # Full schema + RLS policies
+  migrations/0012_owner_consistency.sql  # Cross-table owner consistency triggers
 ```
 
 Every data operation — in Server Components, Server Actions, and API
@@ -297,6 +329,25 @@ Demo may show simulated session fixtures for UI preview only.
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `SUPABASE_SERVICE_ROLE_KEY`
+
+## Owner consistency enforcement (0012)
+
+Migration `0012_owner_consistency.sql` adds database-level triggers that
+prevent cross-landlord data leakage. These fire on INSERT/UPDATE for
+`tenants`, `rent_payments`, `rent_reminder_logs`, `stripe_checkout_sessions`,
+and `payment_collection_sessions`, verifying that all related records share
+the same `owner_id`.
+
+**Preflight check:** run the read-only queries in the migration header
+before applying. They report any existing inconsistent rows. The migration
+never deletes or repairs data — existing bad rows must be resolved manually.
+
+Apply after `0009`:
+
+```sql
+-- In Supabase SQL editor:
+-- Paste contents of supabase/migrations/0012_owner_consistency.sql
+```
 
 ## Scripts
 
